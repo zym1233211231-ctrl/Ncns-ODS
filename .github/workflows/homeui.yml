@@ -1,0 +1,54 @@
+name: homeui
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-homeui:
+    name: Compile Compose home module
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android 33 platform
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-33" >/dev/null
+
+      - name: Cache Kotlin/Compose toolchain
+        uses: actions/cache@v4
+        with:
+          path: homeui/.toolchain
+          key: homeui-tc-${{ runner.os }}-${{ hashFiles('homeui/toolchain/setup.sh') }}
+
+      - name: Fetch toolchain
+        run: ANDROID_JAR="$ANDROID_HOME/platforms/android-33/android.jar" ./homeui/toolchain/setup.sh
+
+      - name: Compile classes3.dex
+        run: ANDROID_JAR="$ANDROID_HOME/platforms/android-33/android.jar" ./homeui/build-home.sh
+
+      - name: Verify composable entry contract
+        run: |
+          set -eux
+          ls -l build/dex/classes3.dex
+          test "$(stat -c%s build/dex/classes3.dex)" -gt 100000
+          test "$(find build/homeui/classes -name '*.class' | wc -l)" -ge 80
+          javap -p -cp build/homeui/classes com.hextech.aram.LauncherScreenKt \
+            | grep -F "LauncherScreen(java.lang.String, kotlin.jvm.functions.Function0<kotlin.Unit>, kotlin.jvm.functions.Function0<kotlin.Unit>, kotlin.jvm.functions.Function0<kotlin.Unit>, androidx.compose.runtime.Composer, int)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: classes3-dex
+          path: build/dex/classes3.dex
+          if-no-files-found: error

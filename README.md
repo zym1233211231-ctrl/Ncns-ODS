@@ -1,28 +1,102 @@
-# ODYSSEY · MYTHIC ARENA — APK Reconstruction Workspace
+# ODYSSEY · MYTHIC ARENA — THE GATES OF OLYMPUS
 
-This is a **reconstructable APK workspace**, not the original Kotlin/Gradle project.
-The original source is lost; the APK is the source of truth.
+[![homeui](https://github.com/zym1233211231-ctrl/Ncns-ODS/actions/workflows/homeui.yml/badge.svg)](https://github.com/zym1233211231-ctrl/Ncns-ODS/actions/workflows/homeui.yml)
+
+A buildable Jetpack Compose reconstruction of the home screen of a decompiled Android game
+(`com.hextech.aram`), built on top of the APK — the original Kotlin/Gradle project is lost.
+
+The home screen was decompiled bytecode. It is now a real Compose source module
+(`homeui/`) that compiles with Kotlin 2.1 + Compose 1.7, ships as `classes3.dex`, and keeps
+the original `LauncherScreen(String, () -> Unit, () -> Unit, () -> Unit)` call contract.
+
+![Landscape 872×393 dp](docs/preview/home-land-872x393dp.png)
+
+![Portrait 392×872 dp](docs/preview/home-portrait-392x872dp.png)
+
+## Highlights
+
+- **Golden-ratio landscape** — 61.8% temple / 38.2% gate panel.
+- **Independent portrait layout** — temple above, glass sheet with the gates below; not a
+  squeezed landscape.
+- **AETHER GLASS** — background transmission + slight refraction on API 31+, with two real
+  fallbacks (light blur / gradient + edge highlight). No fake blur.
+- **Canvas temple scene** — mountains, clouds, colonnade, pediment, steps, torches, god rays,
+  dust and vignette, drawn from code (no bitmap assets).
+- **Native navigation** — arena, chronicles and atelier callbacks are unchanged; settings and
+  credits are real sheets; unavailable destinations are labelled instead of faked.
+- **Static checks in CI** — GitHub Actions compiles the module and asserts the exact
+  composable JVM signature; no 622 MB baseline APK needed.
+
+## Screens
+
+| Landscape | Portrait | Tablet |
+| --- | --- | --- |
+| 61.8 / 38.2 split, full-height glass panel | temple + bottom sheet | content capped at 430 dp |
+
+![Tablet 1280×800 dp](docs/preview/home-tablet-1280x800dp.png)
+
+Glass panels and the two sheet states:
+
+![Settings](docs/preview/sheet-settings.png)
+
+![Credits](docs/preview/sheet-credits.png)
+
+> Screenshots are rendered from the **same Kotlin sources** by `homeui/preview/` on desktop
+> Compose 1.7 (only Android-only `HomeSettings`/`LocalView`/`BackHandler` are stubbed).
+> They are not device screenshots — see the verification notes.
+
+## Build the home module
+
+```bash
+export ANDROID_JAR=/path/to/android-33/android.jar
+JAVA_HOME=/path/to/jdk21 ./homeui/toolchain/setup.sh   # once, pinned versions
+./homeui/build-home.sh                                  # -> build/dex/classes3.dex
+javap -p -cp build/homeui/classes com.hextech.aram.LauncherScreenKt
+```
+
+The full APK build additionally needs the untracked `base/current-v9.apk` + `tools/`:
+
+```bash
+./build.sh              # homeui -> classes3.dex, then classes2, zipalign, apksigner
+BUILD_HOMEUI=0 ./build.sh   # skip the Compose module
+```
 
 ## Repository scope
 
-This repo tracks the **source and documentation** needed to rebuild the home screen
-(`homeui/`), the build pipeline, and the design notes — not the 8 GB working tree.
-Excluded on purpose:
+This repo tracks source, build scripts and documentation. The 8 GB working tree stays out:
 
-| Path | Size | Why |
+| Path | Size | Why not here |
 | --- | --- | --- |
 | `base/*.apk` | 1.3 GB | 622 MB per file, over GitHub's 100 MB file limit |
-| `smali/` | 149 MB | decompiled bytecode, regenerable with apktool/baksmali |
+| `smali/` | 149 MB | decompiled bytecode, regenerable |
 | `jadx/` | 277 MB | decompiled Java reference, regenerable |
 | `tools/` | 890 MB | smali/SDK toolchain |
-| `build/` | 8 GB | generated |
+| `build/` | 8 GB | generated APKs/dex |
 | `sign/oracle.keystore` | — | signing secret, never uploaded |
 
-To rebuild from a fresh clone, restore `base/current-v9.apk` + `tools/` locally
-(see below), then run the build. The produced APK is distributed separately (GitHub
-Releases / local file), never committed.
+Restore `base/` and `tools/` locally to rebuild the APK; the produced APK is distributed
+separately. `.gitignore` enforces all of the above.
 
-## Layout
+## Documentation
+
+- [`docs/HOME-REBUILD.md`](docs/HOME-REBUILD.md) — design, glass tiers, navigation mapping,
+  verification numbers and known gaps.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — original workspace / dex layout notes.
+- [`homeui/preview/README.md`](homeui/preview/README.md) — desktop render harness.
+
+## Status
+
+Compiled, signed and zip-aligned locally; dex reference audit: 89 classes, 746 method
+references, 0 missing, 0 duplicate against `classes.dex`/`classes2.dex`. On-device install
+was not possible in the build environment (no adb/emulator, Shizuku unauthorized) — see the
+risk list in `docs/HOME-REBUILD.md`.
+
+
+---
+
+## APK reconstruction workspace
+
+## Workspace layout
 - `base/oracle-original.apk` — untouched original (622 MB, classes2 + assets).
 - `base/current-v9.apk` — latest working build (v9 credits, performance, myth AI cache).
 - `smali/classes2/` — classes2.dex sources: MainActivity, Oracle Atelier, myth UI, AI engine, game.
@@ -38,27 +112,19 @@ Releases / local file), never committed.
 - `docs/HOME-REBUILD.md` — THE GATES OF OLYMPUS redesign notes, verification and gaps.
 - `docs/preview/` — desktop renders of the real home composables (landscape / portrait / tablet / sheets).
 
-## Build
+## Full APK build
 
-Prerequisites: `base/current-v9.apk` and `tools/apktool-tools` restored into the workspace
-(not tracked), plus `ANDROID_JAR` and the `homeui` toolchain.
+`./build.sh` also assembles classes2 and repackages/signs the APK (the parts below need the
+untracked baseline + tools):
 
 ```bash
-./build.sh                 # classes2 + homeui classes3.dex, default base current-v9
-BUILD_CLASSES1=1 ./build.sh   # also classes.dex (slow)
-BUILD_ASSETS=1 ./build.sh     # also models
+./build.sh                    # classes2 + homeui classes3.dex, default base current-v9
+BUILD_CLASSES1=1 ./build.sh   # also rebuild classes.dex (slow)
+BUILD_ASSETS=1 ./build.sh     # also refresh ONNX models
 BUILD_HOMEUI=0 ./build.sh     # skip the Compose home module
 ```
 
-The home module needs a one-time toolchain download and an `android.jar`:
-
-```bash
-export ANDROID_JAR=/path/to/android-33/android.jar
-JAVA_HOME=/path/to/jdk21 ./homeui/toolchain/setup.sh
-```
-
 Output: `build/odyssey-*-signed.apk`.
-
 Signing: `oracle.keystore`, alias `oracle`, store/key password `oracle2026`.
 Do **not** lose this keystore; updating the installed app depends on it.
 

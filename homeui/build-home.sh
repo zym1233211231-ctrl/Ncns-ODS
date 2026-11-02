@@ -5,8 +5,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TC="${HOMEUI_TOOLCHAIN:-$ROOT/homeui/.toolchain}"
 JAVA="${JAVA_HOME:-/root/atools/root/usr/lib/jvm/java-21-openjdk-arm64}/bin/java"
-ANDROID_JAR="${ANDROID_JAR:-/root/atools/dl/p33/android-13/android.jar}"
-D8_JAR="${D8_JAR:-/root/atools/dl/r8.jar}"
+if [ -z "${ANDROID_JAR:-}" ]; then
+  for candidate in \
+    "${ANDROID_HOME:-}/platforms/android-33/android.jar" \
+    "${ANDROID_SDK_ROOT:-}/platforms/android-33/android.jar" \
+    /root/atools/dl/p33/android-13/android.jar \
+    /root/work/tools/compile/android.jar; do
+    if [ -n "${candidate:-}" ] && [ -f "$candidate" ]; then ANDROID_JAR="$candidate"; break; fi
+  done
+fi
+[ -n "${ANDROID_JAR:-}" ] && [ -f "$ANDROID_JAR" ] || { echo "homeui: set ANDROID_JAR to an android.jar" >&2; exit 2; }
+D8_JAR="${D8_JAR:-$TC/dl/r8.jar}"
+[ -f "$D8_JAR" ] || D8_JAR=/root/atools/dl/r8.jar
 
 if [ ! -f "$TC/dl/kc.jar" ]; then
   echo "homeui: toolchain missing at $TC — run homeui/toolchain/setup.sh first" >&2
