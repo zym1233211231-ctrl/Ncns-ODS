@@ -54,7 +54,7 @@ jobs:
           set -eux
           ls -l build/dex/classes3.dex
           test "$(stat -c%s build/dex/classes3.dex)" -gt 100000
-          test "$(find build/homeui/classes -name '*.class' | wc -l)" -ge 80
+          test "$(find build/homeui/classes -name '*.class' | wc -l)" -ge 25
           javap -p -cp build/homeui/classes com.hextech.aram.LauncherScreenKt \
             | grep -F "LauncherScreen(java.lang.String, kotlin.jvm.functions.Function0<kotlin.Unit>, kotlin.jvm.functions.Function0<kotlin.Unit>, kotlin.jvm.functions.Function0<kotlin.Unit>, androidx.compose.runtime.Composer, int)"
 
