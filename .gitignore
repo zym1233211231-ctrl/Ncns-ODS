@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------
+# Workspace inputs that are too large for GitHub (and not source):
+#   base/     622 MB APK baselines (GitHub hard limit: 100 MB per file)
+#   smali/    149 MB decompiled classes1/classes2
+#   jadx/     277 MB decompiled Java reference
+#   tools/    890 MB apktool / SDK pieces
+#   build/    generated APKs and dex
+# ---------------------------------------------------------------------------
+base/
+smali/
+jadx/
+tools/
+build/
+assets/models/
+assets/from-apk/
+
+# local-only symlinks into /root/work (AI patch sources)
+patch-src
+feature-src
+
+# signing material — never commit this
+sign/
+
+# toolchain + generated artifacts
+homeui/.toolchain
+homeui/preview/out/
+homeui/preview/*.png
+*.apk
+*.dex
+*.class
+out/
+
+.DS_Store
+*.log
