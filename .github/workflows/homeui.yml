@@ -19,12 +19,23 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Install Android 33 platform
+      - name: Prepare Android SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-33" >/dev/null
+          set -eux
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "SDK=$SDK"; ls "$SDK" || true
+          JAR=""
+          for api in 35 34 33; do
+            if [ -f "$SDK/platforms/android-$api/android.jar" ]; then JAR="$SDK/platforms/android-$api/android.jar"; break; fi
+          done
+          if [ -z "$JAR" ]; then
+            SDKMGR="$(find "$SDK/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)"
+            yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+            "$SDKMGR" "platforms;android-34" >/dev/null
+            JAR="$SDK/platforms/android-34/android.jar"
+          fi
+          test -f "$JAR"
+          echo "ANDROID_JAR=$JAR" >> "$GITHUB_ENV"
 
       - name: Cache Kotlin/Compose toolchain
         uses: actions/cache@v4
@@ -33,10 +44,10 @@ jobs:
           key: homeui-tc-${{ runner.os }}-${{ hashFiles('homeui/toolchain/setup.sh') }}
 
       - name: Fetch toolchain
-        run: ANDROID_JAR="$ANDROID_HOME/platforms/android-33/android.jar" ./homeui/toolchain/setup.sh
+        run: ./homeui/toolchain/setup.sh
 
       - name: Compile classes3.dex
-        run: ANDROID_JAR="$ANDROID_HOME/platforms/android-33/android.jar" ./homeui/build-home.sh
+        run: ./homeui/build-home.sh
 
       - name: Verify composable entry contract
         run: |
